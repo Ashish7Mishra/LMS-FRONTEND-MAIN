@@ -2,23 +2,20 @@
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  allowedRoles: string[];
+  allowedRoles?: string[]; // e.g. ["student"] or ["instructor"]
 }
 
 export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
   const token = localStorage.getItem("token");
-  const role = localStorage.getItem("role");
+  const role = localStorage.getItem("role")?.toLowerCase(); // normalize
 
-  // ✅ If not logged in → redirect to login
   if (!token) {
     return <Navigate to="/login" replace />;
   }
 
-  // ✅ Check if role is allowed
-  if (role && allowedRoles.includes(role.toLowerCase())) {
-    return <>{children}</>;
+  if (allowedRoles && !allowedRoles.map(r => r.toLowerCase()).includes(role || "")) {
+    return <Navigate to="/login" replace />;
   }
 
-  // ❌ Not authorized → go to home
-  return <Navigate to="/" replace />;
+  return <>{children}</>;
 }

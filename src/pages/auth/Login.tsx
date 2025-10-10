@@ -1,66 +1,74 @@
-import { useState } from "react";
+ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../utils/axiosConfig";
-import toast from "react-hot-toast";
-import { useAuth } from "../../context/AuthContext";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setError("");
 
     try {
       const res = await api.post("/auth/login", { email, password });
-      const userData = res.data?.data;
-      const token = res.data?.data?.token;
 
-      if (userData && token) {
-        login(userData, token); // ✅ set user in context and localStorage
+      const token = res.data.token;
+      const role = res.data.user?.role || "student"; // ✅ fallback role
 
-        toast.success("Login successful!");
-        navigate(userData.role === "instructor" ? "/admin" : "/dashboard");
+      // Save to localStorage
+      localStorage.setItem("token", token);
+      localStorage.setItem("role", role);
+
+      // Redirect by role
+      if (role === "student") {
+        navigate("/student/dashboard");
+      } else if (role === "instructor") {
+        navigate("/instructor/dashboard");
+      } else if (role === "admin") {
+        navigate("/admin/dashboard");
       } else {
-        throw new Error("Invalid login response");
+        setError("Unknown role. Please contact admin.");
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Login failed");
-    } finally {
-      setLoading(false);
+      setError(err.response?.data?.message || "Login failed");
     }
   };
 
   return (
-    <div className="max-w-md mx-auto mt-20 p-6 border rounded-lg shadow">
-      <h2 className="text-2xl font-bold mb-4">Login</h2>
-      <form onSubmit={handleSubmit} className="space-y-3">
+    <div className="flex items-center justify-center min-h-screen bg-gray-100">
+      <form
+        onSubmit={handleLogin}
+        className="bg-white p-8 rounded shadow-md w-full max-w-md"
+      >
+        <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
+        {error && <p className="text-red-500 mb-4">{error}</p>}
+
         <input
           type="email"
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full border rounded p-2"
           required
+          className="w-full p-2 mb-4 border rounded"
         />
+
         <input
           type="password"
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full border rounded p-2"
           required
+          className="w-full p-2 mb-4 border rounded"
         />
+
         <button
           type="submit"
-          disabled={loading}
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
         >
-          {loading ? "Logging in..." : "Login"}
+          Login
         </button>
       </form>
     </div>

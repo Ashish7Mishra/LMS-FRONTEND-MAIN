@@ -1,4 +1,4 @@
- import { Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 
@@ -10,14 +10,13 @@ import CourseDetails from "./pages/public/CourseDetails";
 // Auth Pages
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
-
 // Student Pages
 import Dashboard from "./pages/student/Dashboard";
-import MyEnrollments from "./pages/student/MyEnrollments";
+//import MyEnrollments from "./pages/student/MyEnrollments";
 import LessonViewer from "./pages/student/LessonViewer";
 
 // Instructor Pages
-import AdminDashboard from "./pages/instructor/AdminDashboard";
+import InstructorDashboard  from "./pages/instructor/Dashboard";
 import ManageLessons from "./pages/instructor/ManageLessons";
 import CreateCourse from "./pages/instructor/CreateCourse";
 
@@ -40,30 +39,33 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
-          {/* Student-only */}
+          {/* Student-only routes */}
           <Route
-            path="/dashboard"
+            path="/student/dashboard"
             element={
               <ProtectedRoute allowedRoles={["student"]}>
                 <Dashboard />
               </ProtectedRoute>
             }
           />
+
+          {/* Instructor-only routes */}
           <Route
-            path="/my-courses"
+            path="/instructor/dashboard"
             element={
-              <ProtectedRoute allowedRoles={["student"]}>
-                <MyEnrollments />
+              <ProtectedRoute allowedRoles={["instructor"]}>
+                <InstructorDashboard  />
               </ProtectedRoute>
             }
           />
-
+          
+      
           {/* Instructor-only */}
           <Route
             path="/admin"
             element={
               <ProtectedRoute allowedRoles={["instructor"]}>
-                <AdminDashboard />
+                <InstructorDashboard />
               </ProtectedRoute>
             }
           >
