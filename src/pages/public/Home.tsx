@@ -1,110 +1,95 @@
- import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import api from "../../utils/axiosConfig";
+import toast from "react-hot-toast";
+import CourseCard from "../../components/CourseCard";
+import Spinner from "../../components/Spinner";
+import { useAuth } from "../../context/AuthContext";
 
 interface Course {
   _id: string;
   title: string;
   description: string;
-  image?: string;
+  instructor?: string | { _id: string; name: string; email: string };
+  imageUrl?: string;
 }
 
 export default function Home() {
+  const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchFeaturedCourses = async () => {
+    const fetchCourses = async () => {
       try {
-        const res = await api.get("/courses?limit=3");
-        setCourses(res.data.data || []);
+        const res = await api.get("/courses"); // deployed API
+        const data = res.data?.data?.data || [];
+        setCourses(data.slice(0, 3)); // latest 3 courses
       } catch (err) {
-        console.error("Error fetching featured courses", err);
+        console.error(err);
+        toast.error("Failed to load courses");
+      } finally {
+        setLoading(false);
       }
     };
-    fetchFeaturedCourses();
+    fetchCourses();
   }, []);
 
   return (
-    <div>
+    <div className="py-16 bg-gradient-to-r from-blue-50 to-blue-100 min-h-screen">
       {/* Hero Section */}
-      <section
-        className="relative bg-cover bg-center h-[60vh] flex items-center justify-center text-center"
-        style={{
-          backgroundImage:
-            "url('https://images.unsplash.com/photo-1522202176988-66273c2fd55f')",
-        }}
-      >
-        <div className="absolute inset-0 bg-black bg-opacity-50"></div>
-        <div className="relative z-10 text-white max-w-3xl">
-          <h2 className="text-lg font-semibold uppercase tracking-wide">
-            Welcome to Learnify
-          </h2>
-          <h1 className="text-4xl md:text-5xl font-extrabold my-4">
-            Unlock Your Potential
-          </h1>
-          <p className="mb-6 text-lg">
-            Learn new skills, upgrade your career, and grow with expert-led
-            courses.
-          </p>
-          <div className="flex justify-center space-x-4">
+      <div className="text-center mb-16 px-4">
+        <h1 className="text-5xl font-extrabold text-blue-600 mb-4">
+          {user
+            ? `Welcome back, ${user.role === "instructor" ? "Instructor" : "Student"} ${user.name}!`
+            : "Welcome to Mini-LMS 🚀"}
+        </h1>
+        <p className="text-lg text-gray-700 max-w-2xl mx-auto mb-6">
+          {user
+            ? "Continue your learning journey or manage courses below."
+            : "A lightweight LMS for students and instructors. Explore courses, enroll, and track your progress."}
+        </p>
+        <div className="flex justify-center gap-4 flex-wrap">
+          <Link
+            to="/courses"
+            className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg shadow hover:bg-blue-700 transition"
+          >
+            Browse Courses
+          </Link>
+          {!user && (
             <Link
-              to="/courses"
-              className="px-6 py-3 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold shadow hover:opacity-90"
+              to="/login"
+              className="px-6 py-3 bg-white text-blue-600 border border-blue-600 font-medium rounded-lg shadow hover:bg-blue-50 transition"
             >
-              Browse Courses
+              Login
             </Link>
-            <Link
-              to="/register"
-              className="px-6 py-3 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 text-white font-semibold shadow hover:opacity-90"
-            >
-              Become an Instructor
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Featured Courses */}
-      <section className="py-12 container mx-auto px-4">
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-8 text-blue-700">
-          Featured Courses
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-          {courses.length > 0 ? (
-            courses.map((course) => (
-              <div
-                key={course._id}
-                className="bg-white rounded-lg shadow hover:shadow-lg overflow-hidden"
-              >
-                {course.image && (
-                  <img
-                    src={course.image}
-                    alt={course.title}
-                    className="h-40 w-full object-cover"
-                  />
-                )}
-                <div className="p-4">
-                  <h3 className="text-lg font-semibold mb-2">
-                    {course.title}
-                  </h3>
-                  <p className="text-gray-600 text-sm line-clamp-2">
-                    {course.description}
-                  </p>
-                  <Link
-                    to={`/courses/${course._id}`}
-                    className="mt-3 inline-block text-blue-600 hover:underline text-sm"
-                  >
-                    View Details →
-                  </Link>
-                </div>
-              </div>
-            ))
-          ) : (
-            <p className="col-span-3 text-center text-gray-500">
-              No featured courses available
-            </p>
           )}
         </div>
-      </section>
+      </div>
+
+      {/* Featured Courses */}
+      <div className="max-w-6xl mx-auto text-center px-4">
+        <h2 className="text-3xl font-bold mb-8 text-gray-800">Latest Courses</h2>
+        {loading ? (
+          <Spinner />
+        ) : courses.length === 0 ? (
+          <p className="text-gray-600">No courses available yet.</p>
+        ) : (
+          <>
+            <div className="grid md:grid-cols-3 sm:grid-cols-2 gap-8 mb-10">
+              {courses.map((course) => (
+                <CourseCard key={course._id} course={course} />
+              ))}
+            </div>
+            <Link
+              to="/courses"
+              className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg shadow hover:bg-blue-700 transition"
+            >
+              View All Courses →
+            </Link>
+          </>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,75 +1,71 @@
- import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
   return (
-    <nav className="bg-white shadow-md fixed top-0 left-0 w-full z-50">
-      <div className="container mx-auto flex items-center justify-between py-3 px-6">
-        {/* Logo */}
-        <Link to="/" className="text-2xl font-bold text-blue-600">
-          Learnify
+    <nav className="bg-blue-600 text-white shadow-md fixed top-0 w-full z-50">
+      <div className="container mx-auto flex justify-between items-center py-4 px-6">
+        <Link to="/" className="font-bold text-xl">
+          Mini-LMS
         </Link>
 
-        {/* Nav Links */}
         <div className="flex items-center space-x-4">
-          <Link
-            to="/"
-            className="px-4 py-2 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:opacity-90"
-          >
+          {/* Public links */}
+          <Link to="/" className="hover:underline">
             Home
           </Link>
-          <Link
-            to="/courses"
-            className="px-4 py-2 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:opacity-90"
-          >
+          <Link to="/courses" className="hover:underline">
             Courses
           </Link>
 
-          {!user ? (
-            <>
-              <Link
-                to="/login"
-                className="px-4 py-2 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:opacity-90"
-              >
-                Login
-              </Link>
-              <Link
-                to="/register"
-                className="px-4 py-2 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:opacity-90"
-              >
-                Register
-              </Link>
-            </>
-          ) : (
+          {/* Role-based links */}
+          {user ? (
             <>
               {user.role === "student" && (
-                <Link
-                  to="/dashboard"
-                  className="px-4 py-2 rounded-full bg-blue-600 text-white hover:bg-blue-700"
-                >
-                  Dashboard
-                </Link>
+                <>
+                  <Link to="/dashboard" className="hover:underline">
+                    Dashboard
+                  </Link>
+                  <Link to="/my-courses" className="hover:underline">
+                    My Courses
+                  </Link>
+                </>
               )}
+
               {user.role === "instructor" && (
-                <Link
-                  to="/admin"
-                  className="px-4 py-2 rounded-full bg-purple-600 text-white hover:bg-purple-700"
-                >
-                  Admin Dashboard
-                </Link>
+                <>
+                  <Link to="/admin" className="hover:underline">
+                    Admin Dashboard
+                  </Link>
+                  <Link to="/admin/create-course" className="hover:underline">
+                    Create Course
+                  </Link>
+                </>
               )}
+
               <button
-                onClick={() => {
-                  logout();
-                  navigate("/login");
-                }}
-                className="px-4 py-2 rounded-full bg-red-500 text-white hover:bg-red-600"
+                onClick={handleLogout}
+                className="bg-red-500 px-3 py-1 rounded hover:bg-red-600"
               >
                 Logout
               </button>
+            </>
+          ) : (
+            <>
+              <Link to="/login" className="hover:underline">
+                Login
+              </Link>
+              <Link to="/register" className="hover:underline">
+                Register
+              </Link>
             </>
           )}
         </div>

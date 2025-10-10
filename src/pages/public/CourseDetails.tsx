@@ -1,134 +1,120 @@
- import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import api from "../../utils/axiosConfig";
+import toast from "react-hot-toast";
+import Spinner from "../../components/Spinner";
+import { useAuth } from "../../context/AuthContext";
 
 interface Lesson {
   _id: string;
   title: string;
-  duration: string;
 }
 
 interface Course {
   _id: string;
   title: string;
   description: string;
-  category: string;
-  price: number;
-  image?: string;
+  category?: string;
+  imageUrl?: string;
+  instructor?: { _id: string; name: string; email: string } | string;
   lessons?: Lesson[];
 }
 
 export default function CourseDetails() {
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams();
+  const { user } = useAuth();
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [enrolling, setEnrolling] = useState(false);
-  const [success, setSuccess] = useState("");
-  const navigate = useNavigate();
+  const [enrolled, setEnrolled] = useState(false);
+
+  const fetchCourse = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get(`/courses/${id}`);
+      setCourse(res.data?.data);
+      // Optional: check if user already enrolled
+      if (user?.role === "student") {
+        const enrolledRes = await api.get("/enrollments/my");
+        const enrolledCourses = enrolledRes.data?.data || [];
+        setEnrolled(enrolledCourses.some((c: any) => c.course._id === id));
+      }
+    } catch (err) {
+      toast.error("Failed to load course");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchCourse = async () => {
-      try {
-        const res = await api.get(`/courses/${id}`);
-        setCourse(res.data.data);
-      } catch (err) {
-        setError("Failed to load course details.");
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchCourse();
   }, [id]);
 
   const handleEnroll = async () => {
-    if (!id) return;
     setEnrolling(true);
-    setError("");
-    setSuccess("");
-
     try {
-      const res = await api.post("/enrollments", { courseId: id });
-      if (res.data.success) {
-        setSuccess("✅ Enrolled successfully!");
-        setTimeout(() => navigate("/my-courses"), 1500);
-      } else {
-        setError(res.data.message || "Failed to enroll.");
-      }
+      await api.post("/enrollments", { courseId: id });
+      toast.success("Enrolled successfully!");
+      setEnrolled(true);
     } catch (err: any) {
-      setError(err.response?.data?.message || "Error during enrollment");
+      toast.error(err.response?.data?.message || "Failed to enroll");
     } finally {
       setEnrolling(false);
     }
   };
 
-  if (loading) return <p className="text-center mt-10">Loading course...</p>;
-  if (error) return <p className="text-center mt-10 text-red-500">{error}</p>;
-  if (!course) return <p className="text-center mt-10">Course not found</p>;
+  if (loading) return <Spinner />;
+  if (!course) return <p className="text-center text-red-500">Course not found</p>;
 
   return (
-    <div className="container mx-auto px-4 py-10">
-      <div className="grid md:grid-cols-2 gap-10">
-        {/* Course Image */}
-        {course.image && (
-          <img
-            src={course.image}
-            alt={course.title}
-            className="w-full h-80 object-cover rounded-lg shadow"
-          />
-        )}
+    <div className="max-w-5xl mx-auto py-10 px-4">
+      {/* Course Header */}
+      {course.imageUrl && (
+        <img
+          src={course.imageUrl}
+          alt={course.title}
+          className="w-full h-64 object-cover rounded-lg mb-6 shadow"
+        />
+      )}
+      <h1 className="text-4xl font-bold text-blue-600 mb-2">{course.title}</h1>
+      <p className="text-gray-700 mb-4">{course.description}</p>
+      <p className="text-sm text-gray-500 mb-4">
+        By{" "}
+        {typeof course.instructor === "object"
+          ? course.instructor?.name
+          : course.instructor || "Unknown"}
+      </p>
 
-        {/* Course Info */}
-        <div>
-          <h1 className="text-3xl font-bold mb-4">{course.title}</h1>
-          <p className="text-gray-600 mb-4">{course.description}</p>
-          <p className="mb-2">
-            <span className="font-semibold">Category:</span> {course.category}
-          </p>
-          <p className="mb-4">
-            <span className="font-semibold">Price:</span>{" "}
-            {course.price > 0 ? `₹${course.price}` : "Free"}
-          </p>
+      {/* Enroll Button */}
+      {user?.role === "student" && !enrolled && (
+        <button
+          onClick={handleEnroll}
+          disabled={enrolling}
+          className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 mb-6"
+        >
+          {enrolling ? "Enrolling..." : "Enroll in Course"}
+        </button>
+      )}
+      {enrolled && (
+        <p className="text-green-600 font-semibold mb-6">You are enrolled in this course.</p>
+      )}
 
-          <button
-            onClick={handleEnroll}
-            disabled={enrolling}
-            className="px-6 py-3 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold shadow hover:opacity-90 disabled:opacity-60"
-          >
-            {enrolling ? "Enrolling..." : "Enroll Now"}
-          </button>
-
-          {error && <p className="text-red-500 mt-3">{error}</p>}
-          {success && <p className="text-green-600 mt-3">{success}</p>}
-        </div>
-      </div>
-
-      {/* Lessons Preview */}
-      <div className="mt-12">
-        <h2 className="text-2xl font-bold mb-4 text-blue-700">
-          Lessons Included
-        </h2>
-        {course.lessons && course.lessons.length > 0 ? (
-          <ul className="space-y-3">
-            {course.lessons.map((lesson, idx) => (
-              <li
-                key={lesson._id}
-                className="p-4 border rounded-lg shadow-sm flex justify-between"
-              >
-                <span>
-                  {idx + 1}. {lesson.title}
-                </span>
-                <span className="text-sm text-gray-500">
-                  {lesson.duration}
-                </span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-gray-500">No lessons available yet.</p>
-        )}
-      </div>
+      {/* Lessons */}
+      <h2 className="text-2xl font-bold text-gray-800 mb-4">Lessons</h2>
+      {course.lessons && course.lessons.length > 0 ? (
+        <ul className="space-y-3">
+          {course.lessons.map((lesson) => (
+            <li
+              key={lesson._id}
+              className="border p-3 rounded hover:shadow cursor-pointer"
+            >
+              {lesson.title}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-gray-500">No lessons added yet.</p>
+      )}
     </div>
   );
 }

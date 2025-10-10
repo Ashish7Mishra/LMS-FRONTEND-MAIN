@@ -1,6 +1,9 @@
  import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import api from "../../utils/axiosConfig";
+import toast from "react-hot-toast";
+import Spinner from "../../components/Spinner";
+import Pagination from "../../components/Pagination";
 
 interface Lesson {
   _id: string;
@@ -9,87 +12,106 @@ interface Lesson {
 }
 
 export default function ManageLessons() {
-  const { id } = useParams<{ id: string }>(); // courseId
+  const { id } = useParams();
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState("");
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [limit] = useState(5);
 
-  const fetchLessons = async () => {
+  const fetchLessons = async (page: number) => {
     try {
-      const res = await api.get(`/lessons/course/${id}`);
-      if (res.data.success) {
-        setLessons(res.data.data);
-      }
-    } catch (err) {
-      console.error("Error fetching lessons:", err);
+      const res = await api.get(`/lessons/course/${id}?page=${page}&limit=${limit}`);
+      const data = res.data?.data?.lessons || [];
+      const pagination = res.data?.data?.pagination || {};
+      setLessons(data);
+      setTotal(pagination.total || 0);
+    } catch {
+      toast.error("Failed to fetch lessons");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchLessons();
-  }, [id]);
+    setLoading(true);
+    fetchLessons(page);
+  }, [id, page]);
 
-  const handleDelete = async (lessonId: string) => {
-    if (!window.confirm("Are you sure you want to delete this lesson?")) return;
+  const handleAddLesson = async (e: React.FormEvent) => {
+    e.preventDefault();
     try {
-      const res = await api.delete(`/lessons/${lessonId}`);
-      if (res.data.success) {
-        setMessage("✅ Lesson deleted successfully");
-        setLessons((prev) => prev.filter((l) => l._id !== lessonId));
-      } else {
-        setMessage("❌ Failed to delete lesson");
-      }
-    } catch (err) {
-      console.error("Delete lesson error:", err);
-      setMessage("❌ Something went wrong");
+      await api.post("/lessons", { courseId: id, title, content });
+      toast.success("Lesson added!");
+      setTitle("");
+      setContent("");
+      fetchLessons(page);
+    } catch {
+      toast.error("Error adding lesson");
     }
   };
 
-  if (loading) return <p className="text-center mt-10">Loading lessons...</p>;
+  const handleDeleteLesson = async (lessonId: string) => {
+    try {
+      await api.delete(`/lessons/${lessonId}`);
+      toast.success("Lesson deleted");
+      fetchLessons(page);
+    } catch {
+      toast.error("Error deleting lesson");
+    }
+  };
+
+  if (loading) return <Spinner />;
 
   return (
-    <div className="max-w-4xl mx-auto mt-10">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Manage Lessons</h2>
-        <Link
-          to={`/admin/courses/${id}/add-lesson`}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-        >
-          + Add Lesson
-        </Link>
-      </div>
+    <div className="max-w-4xl mx-auto p-6">
+      <h2 className="text-3xl font-bold text-blue-600 mb-6">Manage Lessons</h2>
 
-      {message && <p className="mb-4 text-center text-sm text-gray-600">{message}</p>}
+      {/* Add Lesson Form */}
+      <form onSubmit={handleAddLesson} className="bg-white shadow-md rounded-lg p-6 mb-8">
+        <input
+          type="text"
+          placeholder="Lesson Title"
+          className="w-full border rounded-lg px-4 py-2 mb-3"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          required
+        />
+        <textarea
+          placeholder="Lesson Content"
+          className="w-full border rounded-lg px-4 py-2 mb-3"
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          required
+        ></textarea>
+        <button type="submit" className="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+          Add Lesson
+        </button>
+      </form>
 
+      {/* Lessons List */}
+      <h3 className="text-xl font-semibold mb-3">Lessons</h3>
       {lessons.length === 0 ? (
-        <p className="text-gray-600">No lessons found for this course.</p>
+        <p>No lessons yet.</p>
       ) : (
-        <ul className="space-y-3">
-          {lessons.map((lesson) => (
-            <li
-              key={lesson._id}
-              className="p-4 bg-white shadow rounded-lg flex justify-between items-center"
-            >
-              <span className="font-medium">{lesson.title}</span>
-              <div className="space-x-2">
-                <Link
-                  to={`/admin/lessons/${lesson._id}/edit`}
-                  className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600"
-                >
-                  Edit
-                </Link>
+        <>
+          <ul className="space-y-3">
+            {lessons.map((lesson) => (
+              <li key={lesson._id} className="bg-gray-50 p-4 rounded flex justify-between items-center shadow-sm">
+                <span>{lesson.title}</span>
                 <button
-                  onClick={() => handleDelete(lesson._id)}
-                  className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+                  onClick={() => handleDeleteLesson(lesson._id)}
+                  className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
                 >
                   Delete
                 </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+              </li>
+            ))}
+          </ul>
+          <Pagination page={page} total={total} limit={limit} onPageChange={setPage} />
+        </>
       )}
     </div>
   );

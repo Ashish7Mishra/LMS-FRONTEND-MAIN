@@ -1,27 +1,24 @@
  import { Navigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import toast from "react-hot-toast";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   allowedRoles: string[];
 }
 
-export default function ProtectedRoute({
-  children,
-  allowedRoles,
-}: ProtectedRouteProps) {
-  const { user } = useAuth();
+export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
+  const token = localStorage.getItem("token");
+  const role = localStorage.getItem("role");
 
-  if (!user) {
-    toast.error("Please login to continue.");
+  // ✅ If not logged in → redirect to login
+  if (!token) {
     return <Navigate to="/login" replace />;
   }
 
-  if (!allowedRoles.includes(user.role)) {
-    toast.error("You are not authorized to access this page.");
-    return <Navigate to="/" replace />;
+  // ✅ Check if role is allowed
+  if (role && allowedRoles.includes(role.toLowerCase())) {
+    return <>{children}</>;
   }
 
-  return <>{children}</>;
+  // ❌ Not authorized → go to home
+  return <Navigate to="/" replace />;
 }

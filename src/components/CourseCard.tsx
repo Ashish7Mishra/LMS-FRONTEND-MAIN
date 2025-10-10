@@ -1,35 +1,53 @@
- import React from "react";
+import { Link } from "react-router-dom";
+import Card from "./ui/Card";
+import Button from "./ui/Button";
 
-interface Course {
-  _id: string;
-  title: string;
-  description: string;
-  category: string;
-  image?: string;
-  featured?: boolean;
+interface CourseProps {
+  course: {
+    _id: string;
+    title: string;
+    description: string;
+    instructor?: { _id: string; name: string; email: string } | string;
+    imageUrl?: string;
+  };
 }
 
-const API_BASE_URL = "http://localhost:5000"; // backend URL
-
-export default function CourseCard({ course }: { course: Course }) {
+export default function CourseCard({ course }: CourseProps) {
   return (
-    <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition">
-      <img
-        src={
-          course.image
-            ? `${API_BASE_URL}/${course.image}`
-            : "https://via.placeholder.com/600x400"
-        }
-        alt={course.title}
-        className="w-full h-48 object-cover"
-      />
-      <div className="p-4">
-        <h3 className="text-lg font-bold">{course.title}</h3>
-        <p className="text-sm text-gray-600">{course.description}</p>
-        <span className="mt-2 inline-block bg-green-500 text-white px-2 py-1 text-xs rounded">
-          {course.category}
-        </span>
+    <Card className="flex flex-col h-full">
+      {/* Image */}
+      {course.imageUrl && (
+        <img
+          src={course.imageUrl}
+          alt={course.title}
+          className="w-full h-40 object-cover rounded-t-lg mb-3"
+        />
+      )}
+
+      {/* Text content */}
+      <div className="flex flex-col flex-grow">
+        <h3 className="text-xl font-semibold mb-2">{course.title}</h3>
+        <p className="text-gray-600 flex-grow">{course.description}</p>
+        <p className="text-sm text-gray-500 mt-2">
+          By{" "}
+          {typeof course.instructor === "object"
+            ? course.instructor?.name
+            : course.instructor || "Unknown"}
+        </p>
       </div>
-    </div>
+
+      {/* Button */}
+      <div className="mt-4">
+        <Link to={`/courses/${course._id}`}>
+          <Button
+            variant="primary"
+            className="w-full bg-blue-600 text-white hover:bg-blue-700"
+          >
+            View Details
+          </Button>
+        </Link>
+
+      </div>
+    </Card>
   );
 }

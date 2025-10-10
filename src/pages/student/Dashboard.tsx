@@ -1,170 +1,108 @@
- import { useEffect, useMemo, useState } from "react";
-import api from "../../utils/axiosConfig";
-import { Link } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
-
-interface Course {
-  _id: string;
-  title: string;
-  description: string;
-  imageUrl?: string;
-  category?: string;
-}
-
-interface Enrollment {
-  _id: string;
-  course: Course;
-  progress: number;
-}
+ import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function Dashboard() {
-  const { user } = useAuth();
-  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<"inprogress" | "completed" | "explore">(
-    "inprogress"
-  );
+  const [user, setUser] = useState<any>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchEnrollments = async () => {
-      try {
-        setError(null);
-        setLoading(true);
-        if (user?.role !== "student") {
-          setEnrollments([]);
-          return;
-        }
-        const res = await api.get("/enrollments/my-enrollments");
-        console.log("Student enrollments API:", res.data);
-        if (res.data.success) {
-          const arr = res.data.data?.data || [];
-          setEnrollments(arr);
-        } else {
-          setError(res.data.message || "Failed to fetch enrollments");
-        }
-      } catch (err) {
-        console.error(err);
-        setError("Unable to load enrollments. Try again later.");
-      } finally {
-        setLoading(false);
-      }
-    };
+    // Simulate user fetch from token
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/login");
+    } else {
+      // Example: decode role or fetch profile from API
+      setUser({
+        name: "John Doe",
+        email: "john@example.com",
+        role: "student", // or "instructor"
+      });
+    }
+  }, [navigate]);
 
-    fetchEnrollments();
-    const listener = () => fetchEnrollments();
-    window.addEventListener("progressUpdated", listener);
-    return () => window.removeEventListener("progressUpdated", listener);
-  }, [user?.role]);
-
-  const stats = useMemo(() => {
-    const total = enrollments.length;
-    const completed = enrollments.filter((e) => e.progress >= 100).length;
-    const inProgress = total - completed;
-    return { total, completed, inProgress };
-  }, [enrollments]);
-
-  const filtered = useMemo(() => {
-    if (tab === "inprogress")
-      return enrollments.filter((e) => e.progress > 0 && e.progress < 100);
-    if (tab === "completed") return enrollments.filter((e) => e.progress >= 100);
-    // explore: show all (or you may fetch marketplace separately)
-    return enrollments;
-  }, [enrollments, tab]);
-
-  if (loading) return <p className="text-center mt-8">Loading...</p>;
-  if (error)
-    return <p className="text-center text-red-600 mt-8">{error}</p>;
+  if (!user) {
+    return (
+      <div className="flex h-screen items-center justify-center text-gray-600">
+        Loading...
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-6xl mx-auto mt-10 px-4">
-      <header className="mb-6">
-        <h1 className="text-3xl font-bold">Welcome back{user?.name ? `, ${user.name.split(" ")[0]}` : ""} 👋</h1>
-        <p className="text-sm text-gray-500 mt-1">Resume learning where you left off.</p>
+    <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 p-6">
+      {/* Header */}
+      <header className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold text-purple-700">LMS Dashboard</h1>
+        <button
+          onClick={() => {
+            localStorage.removeItem("token");
+            navigate("/login");
+          }}
+          className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+        >
+          Logout
+        </button>
       </header>
 
-      {/* Top stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white p-5 rounded-lg shadow-sm">
-          <p className="text-sm text-gray-500">Enrolled Courses</p>
-          <p className="text-2xl font-semibold">{stats.total}</p>
-        </div>
-
-        <div className="bg-white p-5 rounded-lg shadow-sm">
-          <p className="text-sm text-gray-500">Completed</p>
-          <p className="text-2xl font-semibold">{stats.completed}</p>
-        </div>
-
-        <div className="bg-white p-5 rounded-lg shadow-sm">
-          <p className="text-sm text-gray-500">In Progress</p>
-          <p className="text-2xl font-semibold">{stats.inProgress}</p>
-        </div>
+      {/* Welcome Card */}
+      <div className="bg-white rounded-2xl shadow p-6 mb-8">
+        <h2 className="text-xl font-semibold text-gray-800">
+          Welcome back, {user.name} 👋
+        </h2>
+        <p className="text-gray-600">
+          You are logged in as a{" "}
+          <span className="font-medium text-purple-600">{user.role}</span>
+        </p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-3 mb-6">
-        <button
-          onClick={() => setTab("inprogress")}
-          className={`px-4 py-2 rounded-md ${tab === "inprogress" ? "bg-blue-600 text-white" : "bg-white border"}`}
-        >
-          In Progress
-        </button>
-        <button
-          onClick={() => setTab("completed")}
-          className={`px-4 py-2 rounded-md ${tab === "completed" ? "bg-blue-600 text-white" : "bg-white border"}`}
-        >
-          Completed
-        </button>
-        <button
-          onClick={() => setTab("explore")}
-          className={`px-4 py-2 rounded-md ${tab === "explore" ? "bg-blue-600 text-white" : "bg-white border"}`}
-        >
-          Explore
-        </button>
-      </div>
+      {/* Dashboard Sections */}
+      {user.role === "student" ? (
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="bg-white rounded-2xl shadow p-6">
+            <h3 className="text-lg font-semibold mb-2">My Enrollments</h3>
+            <p className="text-gray-600">View and manage your enrolled courses.</p>
+            <button
+              onClick={() => navigate("/my-enrollments")}
+              className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+            >
+              Go to Enrollments
+            </button>
+          </div>
 
-      {/* Course grid */}
-      {filtered.length === 0 ? (
-        <div className="text-center text-gray-600 py-12 bg-white rounded-lg shadow-sm">
-          <p className="mb-3">No courses to show in this tab.</p>
-          <Link to="/courses" className="inline-block bg-blue-600 text-white px-4 py-2 rounded">
-            Explore Courses
-          </Link>
+          <div className="bg-white rounded-2xl shadow p-6">
+            <h3 className="text-lg font-semibold mb-2">Browse Courses</h3>
+            <p className="text-gray-600">Explore available courses to join.</p>
+            <button
+              onClick={() => navigate("/courses")}
+              className="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            >
+              Explore Courses
+            </button>
+          </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filtered.map((enroll) => (
-            <article key={enroll._id} className="bg-white rounded-lg shadow-sm overflow-hidden flex flex-col">
-              <div className="h-40 w-full overflow-hidden">
-                <img
-                  src={enroll.course.imageUrl || "https://via.placeholder.com/600x400"}
-                  alt={enroll.course.title}
-                  className="object-cover w-full h-full"
-                />
-              </div>
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="bg-white rounded-2xl shadow p-6">
+            <h3 className="text-lg font-semibold mb-2">My Courses</h3>
+            <p className="text-gray-600">Manage courses you created as instructor.</p>
+            <button
+              onClick={() => navigate("/instructor/courses")}
+              className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+            >
+              Manage Courses
+            </button>
+          </div>
 
-              <div className="p-4 flex-1 flex flex-col">
-                <h3 className="text-lg font-semibold">{enroll.course.title}</h3>
-                <p className="text-sm text-gray-500 mt-2 flex-1">{enroll.course.description.substring(0, 100)}...</p>
-
-                {/* progress */}
-                <div className="mt-4">
-                  <div className="w-full bg-gray-200 h-2 rounded">
-                    <div
-                      style={{ width: `${Math.max(0, Math.min(100, enroll.progress))}%` }}
-                      className="h-2 rounded bg-gradient-to-r from-blue-500 to-purple-600"
-                    />
-                  </div>
-                  <div className="flex items-center justify-between mt-2 text-sm text-gray-600">
-                    <span>{enroll.progress}%</span>
-                    <Link to={`/courses/${enroll.course._id}`} className="text-blue-600 font-medium">
-                      Continue
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </article>
-          ))}
+          <div className="bg-white rounded-2xl shadow p-6">
+            <h3 className="text-lg font-semibold mb-2">Create New Course</h3>
+            <p className="text-gray-600">Add new courses for your students.</p>
+            <button
+              onClick={() => navigate("/instructor/create-course")}
+              className="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            >
+              Create Course
+            </button>
+          </div>
         </div>
       )}
     </div>

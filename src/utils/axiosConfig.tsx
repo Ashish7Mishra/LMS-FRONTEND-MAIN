@@ -1,16 +1,15 @@
- import axios from "axios";
+ // src/utils/axiosConfig.ts
+import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://lms-backend-main.onrender.com/api", // make sure backend URL is correct
+  baseURL: "https://lms-backend-main.onrender.com/api",
 });
 
-// Add token only if it exists
+// Always attach token if exists
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
-  if (token && token !== "undefined") {
+  if (token) {
     config.headers.Authorization = `Bearer ${token}`;
-  } else {
-    delete config.headers.Authorization; // remove header if no token
   }
   return config;
 });

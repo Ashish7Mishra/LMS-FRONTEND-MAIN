@@ -1,109 +1,106 @@
- import { useEffect, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Users } from "lucide-react";
-import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import api from "../../utils/axiosConfig";
+import toast from "react-hot-toast";
+import Spinner from "../../components/Spinner";
+import CourseCard from "../../components/CourseCard";
+
+interface Course {
+  _id: string;
+  title: string;
+  description: string;
+  instructor?: { _id: string; name: string; email: string } | string;
+  imageUrl?: string;
+  category?: string;
+}
 
 export default function Courses() {
-  const [courses, setCourses] = useState<any[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(6);
+  const [total, setTotal] = useState(0);
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("");
+
+  const fetchCourses = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get("/courses", {
+        params: { page, limit, search, category },
+      });
+      const data = res.data?.data?.data || [];
+      const pagination = res.data?.data?.pagination || {};
+      setCourses(data);
+      setTotal(pagination.total || data.length);
+    } catch (err) {
+      toast.error("Failed to fetch courses");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchCourses = async () => {
-      try {
-        const res = await api.get("/courses");
-        console.log("Fetched courses:", res.data);
-
-        if (Array.isArray(res.data)) {
-          setCourses(res.data);
-        } else if (res.data && Array.isArray(res.data.courses)) {
-          setCourses(res.data.courses);
-        } else {
-          setCourses([]);
-        }
-      } catch (err) {
-        console.error("Error fetching courses", err);
-        setCourses([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchCourses();
-  }, []);
+  }, [page, search, category]);
 
-  if (loading) {
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 p-8">
-        {[...Array(6)].map((_, i) => (
-          <div
-            key={i}
-            className="animate-pulse rounded-xl border border-gray-200 shadow-md bg-white overflow-hidden"
-          >
-            <div className="h-48 bg-gray-300"></div>
-            <div className="p-5 space-y-3">
-              <div className="h-6 bg-gray-300 rounded w-3/4"></div>
-              <div className="h-4 bg-gray-200 rounded w-full"></div>
-              <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-              <div className="flex justify-between pt-3">
-                <div className="h-6 w-20 bg-gray-300 rounded-full"></div>
-                <div className="h-6 w-12 bg-gray-300 rounded"></div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
+  const totalPages = Math.ceil(total / limit);
 
   return (
-    <div className="py-12 px-6">
-      <h2 className="text-3xl font-bold text-blue-700 text-center mb-10">
-        Available Courses
-      </h2>
+    <div className="max-w-7xl mx-auto py-16 px-4">
+      <h1 className="text-4xl font-bold text-blue-600 mb-6">All Courses</h1>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-        {courses.length > 0 ? (
-          courses.map((course, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1, duration: 0.6 }}
-            >
-              <Card className="rounded-xl border border-gray-200 shadow-md hover:shadow-xl transition bg-white overflow-hidden">
-                <img
-                  src={course.img || "https://via.placeholder.com/600x400"}
-                  alt={course.title}
-                  className="w-full h-48 object-cover"
-                />
-                <CardContent className="p-5 space-y-3">
-                  <h3 className="text-xl font-semibold text-gray-800 hover:text-blue-600 cursor-pointer">
-                    {course.title}
-                  </h3>
-                  <p className="text-gray-600 text-sm leading-relaxed">
-                    {course.description}
-                  </p>
-
-                  <div className="flex items-center justify-between pt-2">
-                    <div className="bg-green-500 text-white text-xs font-semibold px-3 py-1 rounded-full">
-                      {course.category || "General"}
-                    </div>
-                    <div className="flex items-center text-gray-500 text-sm">
-                      <Users className="w-4 h-4 mr-1" />
-                      {course.students || 0}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))
-        ) : (
-          <p className="text-center col-span-3 text-gray-500">
-            No courses available
-          </p>
-        )}
+      {/* Search & Filter */}
+      <div className="flex flex-col md:flex-row gap-4 mb-8">
+        <input
+          type="text"
+          placeholder="Search courses..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="border p-2 rounded w-full md:w-1/2"
+        />
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          className="border p-2 rounded w-full md:w-1/4"
+        >
+          <option value="">All Categories</option>
+          <option value="Development">Development</option>
+          <option value="Design">Design</option>
+          <option value="Marketing">Marketing</option>
+        </select>
       </div>
+
+      {/* Courses List */}
+      {loading ? (
+        <Spinner />
+      ) : courses.length === 0 ? (
+        <p className="text-center text-gray-600">No courses found.</p>
+      ) : (
+        <div className="grid md:grid-cols-3 gap-6">
+          {courses.map((course) => (
+            <CourseCard key={course._id} course={course} />
+          ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center mt-8 gap-3">
+          {[...Array(totalPages)].map((_, idx) => (
+            <button
+              key={idx}
+              className={`px-3 py-1 rounded ${
+                page === idx + 1
+                  ? "bg-blue-600 text-white"
+                  : "border text-gray-700 hover:bg-gray-100"
+              }`}
+              onClick={() => setPage(idx + 1)}
+            >
+              {idx + 1}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

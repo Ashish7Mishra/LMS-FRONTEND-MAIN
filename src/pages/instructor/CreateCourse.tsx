@@ -1,7 +1,6 @@
  import { useState } from "react";
 import api from "../../utils/axiosConfig";
 
-
 export default function CreateCourse() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -20,6 +19,7 @@ export default function CreateCourse() {
       let res;
 
       if (image) {
+        // ✅ Normal flow with image
         const formData = new FormData();
         formData.append("title", title);
         formData.append("description", description);
@@ -31,6 +31,7 @@ export default function CreateCourse() {
           headers: { "Content-Type": "multipart/form-data" },
         });
       } else {
+        // 🚀 Bypass Cloudinary → send only JSON data
         res = await api.post("/courses", {
           title,
           description,
@@ -51,26 +52,25 @@ export default function CreateCourse() {
       }
     } catch (err: any) {
       console.error("Create course error:", err.response?.data || err.message);
+
       setError(err.response?.data?.message || "Something went wrong");
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto mt-12 bg-white shadow-lg rounded-xl p-8">
-      <h2 className="text-3xl font-bold text-center mb-6">
-        Create New Course
-      </h2>
+    <div className="max-w-lg mx-auto mt-10 p-6 border rounded-lg shadow">
+      <h2 className="text-2xl font-bold mb-4">Create New Course</h2>
 
       {error && <p className="text-red-500 mb-3">{error}</p>}
       {success && <p className="text-green-500 mb-3">{success}</p>}
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <input
           type="text"
           placeholder="Course Title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+          className="w-full p-2 border rounded"
           required
         />
 
@@ -78,7 +78,7 @@ export default function CreateCourse() {
           placeholder="Course Description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+          className="w-full p-2 border rounded"
           required
         />
 
@@ -87,7 +87,7 @@ export default function CreateCourse() {
           placeholder="Category"
           value={category}
           onChange={(e) => setCategory(e.target.value)}
-          className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+          className="w-full p-2 border rounded"
           required
         />
 
@@ -96,20 +96,21 @@ export default function CreateCourse() {
           placeholder="Price"
           value={price}
           onChange={(e) => setPrice(e.target.value)}
-          className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+          className="w-full p-2 border rounded"
           required
         />
 
+        {/* Optional image */}
         <input
           type="file"
           accept="image/*"
           onChange={(e) => setImage(e.target.files?.[0] || null)}
-          className="w-full p-2 border rounded-lg"
+          className="w-full p-2 border rounded"
         />
 
         <button
           type="submit"
-          className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:opacity-90 transition"
+          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
         >
           Create Course
         </button>
