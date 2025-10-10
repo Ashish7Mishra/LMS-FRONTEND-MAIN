@@ -1,120 +1,159 @@
+ import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import api from "../../utils/axiosConfig";
-import toast from "react-hot-toast";
-import Spinner from "../../components/Spinner";
-import { useAuth } from "../../context/AuthContext";
-
-interface Lesson {
-  _id: string;
-  title: string;
-}
+import Card from "../../components/ui/Card";
+import Button from "../../components/ui/Button";
+import { CheckCircle, X } from "lucide-react";
 
 interface Course {
   _id: string;
   title: string;
   description: string;
-  category?: string;
-  imageUrl?: string;
   instructor?: { _id: string; name: string; email: string } | string;
-  lessons?: Lesson[];
+  imageUrl?: string;
+  lessons?: { _id: string; title: string; duration: string }[];
 }
 
 export default function CourseDetails() {
-  const { id } = useParams();
-  const { user } = useAuth();
+  const { id } = useParams<{ id: string }>();
   const [course, setCourse] = useState<Course | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [enrolling, setEnrolling] = useState(false);
-  const [enrolled, setEnrolled] = useState(false);
-
-  const fetchCourse = async () => {
-    setLoading(true);
-    try {
-      const res = await api.get(`/courses/${id}`);
-      setCourse(res.data?.data);
-      // Optional: check if user already enrolled
-      if (user?.role === "student") {
-        const enrolledRes = await api.get("/enrollments/my");
-        const enrolledCourses = enrolledRes.data?.data || [];
-        setEnrolled(enrolledCourses.some((c: any) => c.course._id === id));
-      }
-    } catch (err) {
-      toast.error("Failed to load course");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [activeTab, setActiveTab] = useState<"overview" | "lessons" | "instructor">("overview");
 
   useEffect(() => {
+    const fetchCourse = async () => {
+      const res = await fetch(`http://localhost:5000/api/courses/${id}`);
+      const data = await res.json();
+      setCourse(data);
+    };
     fetchCourse();
   }, [id]);
 
-  const handleEnroll = async () => {
-    setEnrolling(true);
-    try {
-      await api.post("/enrollments", { courseId: id });
-      toast.success("Enrolled successfully!");
-      setEnrolled(true);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to enroll");
-    } finally {
-      setEnrolling(false);
-    }
-  };
+  if (!course) {
+    return <p className="text-center mt-10 text-gray-600">Loading...</p>;
+  }
 
-  if (loading) return <Spinner />;
-  if (!course) return <p className="text-center text-red-500">Course not found</p>;
+  const defaultImage = "https://via.placeholder.com/800x400.png?text=Course+Banner";
 
   return (
-    <div className="max-w-5xl mx-auto py-10 px-4">
-      {/* Course Header */}
-      {course.imageUrl && (
+    <div className="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {/* Left Section */}
+      <div className="lg:col-span-2 space-y-6">
+        {/* Banner */}
+        <div className="h-64 w-full rounded-xl overflow-hidden shadow-md">
+          <img
+            src={course.imageUrl || defaultImage}
+            alt={course.title}
+            className="w-full h-full object-cover"
+          />
+        </div>
+
+        {/* Tabs */}
+        <div>
+          <div className="flex border-b mb-4 space-x-6">
+            {["overview", "lessons", "instructor"].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab as any)}
+                className={`pb-2 px-1 font-medium ${
+                  activeTab === tab
+                    ? "text-blue-600 border-b-2 border-blue-600"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
+          </div>
+
+          {/* Tab Content */}
+          {activeTab === "overview" && (
+            <div>
+              <h2 className="text-2xl font-bold mb-3">{course.title}</h2>
+              <p className="text-gray-700">{course.description}</p>
+            </div>
+          )}
+
+          {activeTab === "lessons" && (
+            <div>
+              <h2 className="text-xl font-semibold mb-3">Lessons</h2>
+              {course.lessons && course.lessons.length > 0 ? (
+                <ul className="space-y-2">
+                  {course.lessons.map((lesson) => (
+                    <li
+                      key={lesson._id}
+                      className="p-3 bg-white shadow-sm rounded-lg flex justify-between"
+                    >
+                      <span>{lesson.title}</span>
+                      <span className="text-gray-500">{lesson.duration}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-500">No lessons added yet.</p>
+              )}
+            </div>
+          )}
+
+          {activeTab === "instructor" && (
+            <div>
+              <h2 className="text-xl font-semibold mb-3">Instructor</h2>
+              <p>
+                {typeof course.instructor === "object"
+                  ? course.instructor?.name
+                  : course.instructor || "Unknown"}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Right Sidebar */}
+      <Card className="p-6 space-y-6">
         <img
-          src={course.imageUrl}
+          src={course.imageUrl || defaultImage}
           alt={course.title}
-          className="w-full h-64 object-cover rounded-lg mb-6 shadow"
+          className="w-full h-40 object-cover rounded-md"
         />
-      )}
-      <h1 className="text-4xl font-bold text-blue-600 mb-2">{course.title}</h1>
-      <p className="text-gray-700 mb-4">{course.description}</p>
-      <p className="text-sm text-gray-500 mb-4">
-        By{" "}
-        {typeof course.instructor === "object"
-          ? course.instructor?.name
-          : course.instructor || "Unknown"}
-      </p>
 
-      {/* Enroll Button */}
-      {user?.role === "student" && !enrolled && (
-        <button
-          onClick={handleEnroll}
-          disabled={enrolling}
-          className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 mb-6"
-        >
-          {enrolling ? "Enrolling..." : "Enroll in Course"}
-        </button>
-      )}
-      {enrolled && (
-        <p className="text-green-600 font-semibold mb-6">You are enrolled in this course.</p>
-      )}
-
-      {/* Lessons */}
-      <h2 className="text-2xl font-bold text-gray-800 mb-4">Lessons</h2>
-      {course.lessons && course.lessons.length > 0 ? (
-        <ul className="space-y-3">
-          {course.lessons.map((lesson) => (
-            <li
-              key={lesson._id}
-              className="border p-3 rounded hover:shadow cursor-pointer"
-            >
-              {lesson.title}
+        <div>
+          <h3 className="font-bold mb-2">Course Includes</h3>
+          <ul className="space-y-1 text-gray-600">
+            <li className="flex items-center gap-2">
+              <CheckCircle className="text-green-500 w-4 h-4" /> 10 hours on-demand video
             </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-gray-500">No lessons added yet.</p>
-      )}
+            <li className="flex items-center gap-2">
+              <CheckCircle className="text-green-500 w-4 h-4" /> Downloadable resources
+            </li>
+            <li className="flex items-center gap-2">
+              <CheckCircle className="text-green-500 w-4 h-4" /> Access on mobile and TV
+            </li>
+            <li className="flex items-center gap-2">
+              <CheckCircle className="text-green-500 w-4 h-4" /> Certificate of completion
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <h3 className="font-bold mb-2">What you'll learn</h3>
+          <ul className="space-y-1 text-gray-600">
+            <li className="flex items-center gap-2">
+              <CheckCircle className="text-blue-500 w-4 h-4" /> Master the basics of React
+            </li>
+            <li className="flex items-center gap-2">
+              <CheckCircle className="text-blue-500 w-4 h-4" /> Build real-world projects
+            </li>
+            <li className="flex items-center gap-2">
+              <CheckCircle className="text-blue-500 w-4 h-4" /> State management with hooks
+            </li>
+            <li className="flex items-center gap-2">
+              <CheckCircle className="text-blue-500 w-4 h-4" /> Deploy React apps
+            </li>
+          </ul>
+        </div>
+
+        <Button className="w-full bg-blue-600 text-white hover:bg-blue-700">
+          Enroll Now
+        </Button>
+      </Card>
     </div>
   );
 }
